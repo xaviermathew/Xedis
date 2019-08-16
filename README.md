@@ -21,7 +21,7 @@ INFO:xedis.server:listening on:('localhost', 6379)
 xedis> 
 ```
 3) Run some commands on the repl. Try `help`. l - list, s - set, h - hashmap
-```
+```bash
 xedis> help
 <OK> flush
 hcount name
@@ -52,7 +52,7 @@ xedis> help sadd
 <OK> sadd name *items
 ```
 4) Let's load some data now
-```
+```bash
 xedis> screate s1
 <OK>
 xedis> sadd s1 1 2 3
@@ -74,14 +74,14 @@ xedis> hvalues h1
 [u'v2', u'v1']
 ```
 5) Instrospect the data
-```
+```bash
 xedis> keys
 [u's1', u'h1']
 xedis> info
 {u'mem_usage': 1098, u'num_items': 2}
 ```
 5) Commands may even be chained together with a `|`
-```
+```bash
 xedis> screate s2
 <OK>
 xedis> hkeys h1|hget h1|sadd s2
