@@ -10,7 +10,6 @@ STORE = {}
 
 def persist():
     _LOG.debug('Why Mr. Anderson? Why? Why do u persist?')
-    print STORE
     with open(settings.DATA_DUMP_LOCATION, 'w') as f:
         pickle.dump(STORE, f)
 
