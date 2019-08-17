@@ -3,7 +3,7 @@ from cStringIO import StringIO
 import inspect
 import string
 
-from xavium.scheduler import Scheduler
+from xavium.planner import Planner
 from xavium.commands import is_parallelizable
 from xedis import commands
 
@@ -113,5 +113,5 @@ def parse_line(line):
 
 def parse(line):
     steps = parse_line(line)
-    xvm = Scheduler(steps)
+    xvm = Planner(steps)
     return xvm.execute()
