@@ -7,10 +7,10 @@ Redis-like in-memory datastructure store
 
 ## Instructions
 Note: this project needs [Xavium](https://github.com/xaviermathew/Xavium). Install it as shown
-```
-git clone git@github.com:xaviermathew/Xavium.git
-cd Xavium
-pip install -e .
+```bash
+$ git clone git@github.com:xaviermathew/Xavium.git
+$ cd Xavium
+$ pip install -e .
 ```
 1) Start the server
 ```python
