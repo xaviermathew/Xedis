@@ -1,37 +1,40 @@
 import csv
 from cStringIO import StringIO
+import inspect
 import string
 
+from xavium.scheduler import Scheduler
+from xavium.commands import is_parallelizable
 from xedis import commands
 
 COMMANDS = {
-    'keys': {'fn': commands.keys},
-    'rem': {'fn': commands.rem},
-    'flush': {'fn': commands.flush},
-    'info': {'fn': commands.info},
-    'help': {'fn': commands.help},
+    'keys': commands.keys,
+    'rem': commands.rem,
+    'flush': commands.flush,
+    'info': commands.info,
+    'help': commands.help,
 
-    'screate': {'fn': commands.screate},
-    'sget': {'fn': commands.sget},
-    'sadd': {'fn': commands.sadd},
-    'srem': {'fn': commands.srem},
-    'sinter': {'fn': commands.sinter},
-    'sunion': {'fn': commands.sunion},
-    'scount': {'fn': commands.scount},
+    'screate': commands.screate,
+    'sget': commands.sget,
+    'sadd': commands.sadd,
+    'srem': commands.srem,
+    'sinter': commands.sinter,
+    'sunion': commands.sunion,
+    'scount': commands.scount,
 
-    'lcreate': {'fn': commands.lcreate},
-    'lget': {'fn': commands.lget},
-    'lrem': {'fn': commands.lrem},
-    'lappend': {'fn': commands.lappend},
-    'lcount': {'fn': commands.lcount},
+    'lcreate': commands.lcreate,
+    'lget': commands.lget,
+    'lrem': commands.lrem,
+    'lappend': commands.lappend,
+    'lcount': commands.lcount,
 
-    'hcreate': {'fn': commands.hcreate},
-    'hget': {'fn': commands.hget},
-    'hset': {'fn': commands.hset},
-    'hpop': {'fn': commands.hpop},
-    'hkeys': {'fn': commands.hkeys},
-    'hvalues': {'fn': commands.hvalues},
-    'hcount': {'fn': commands.hcount},
+    'hcreate': commands.hcreate,
+    'hget': commands.hget,
+    'hset': commands.hset,
+    'hpop': commands.hpop,
+    'hkeys': commands.hkeys,
+    'hvalues': commands.hvalues,
+    'hcount': commands.hcount,
 }
 
 
@@ -39,7 +42,7 @@ class InvalidCommand(Exception):
     pass
 
 
-def _parse_delimited(s, delimiter):
+def parse_delimited(s, delimiter):
     parsed = next(csv.reader(StringIO(s), delimiter=delimiter))
     return map(string.strip, parsed)
 
@@ -56,44 +59,59 @@ def typecast(item):
 
 def parse_args(arg_str):
     try:
-        args = _parse_delimited(arg_str, delimiter=' ')
+        args = parse_delimited(arg_str, delimiter=' ')
     except StopIteration:
         return ()
     else:
         return map(typecast, args)
 
 
-def parse_fn(fn):
+def parse_arg_set(fn, arg_str):
+    sig = inspect.getargspec(fn)
+    args = parse_args(arg_str)
+    common_args = args[:len(sig.args) - 1]
+    parallel_args = args[len(sig.args) - 1:]
+
+    # in case fn is the first cmd in a pipe'd cmd list, parallel_args will be present
+    #
+    # for intermediary steps, only common_args will be populated; parallel_args will
+    # be populated by xvm
+    return common_args, parallel_args
+
+
+def parse_fn(fn_str):
     try:
-        return COMMANDS[fn]['fn']
+        return COMMANDS[fn_str]
     except KeyError:
-        raise InvalidCommand('invalid command: %s' % fn)
+        raise InvalidCommand('invalid command: %s' % fn_str)
+
+
+def parse_fn_with_args(fn_str, arg_str):
+    fn = parse_fn(fn_str)
+    if is_parallelizable(fn):
+        common_args, parallel_args = parse_arg_set(fn, arg_str)
+        return fn, common_args, parallel_args
+    else:
+        args = parse_args(arg_str)
+        return fn, args, []
 
 
 def parse_line(line):
-    cmd_list = _parse_delimited(line, delimiter='|')
+    cmd_list = parse_delimited(line, delimiter='|')
     parsed = []
     for cmd in cmd_list:
         try:
             fn_str, arg_str = cmd.split(' ', 1)
         except ValueError:
             fn = parse_fn(cmd)
-            parsed.append((fn, []))
+            parsed.append((fn, [], []))
         else:
-            fn = parse_fn(fn_str)
-            args = parse_args(arg_str)
-            parsed.append((fn, args))
+            fn, common_args, parallel_args = parse_fn_with_args(fn_str, arg_str)
+            parsed.append((fn, common_args, parallel_args))
     return parsed
 
 
 def parse(line):
-    parsed = parse_line(line)
-    fn, args = parsed[0]
-    result = fn(*args)
-    for fn, args in parsed[1:]:
-        if isinstance(result, (list, set)):
-            args.extend(result)
-        else:
-            args.append(result)
-        result = fn(*args)
-    return result
+    steps = parse_line(line)
+    xvm = Scheduler(steps)
+    return xvm.execute()

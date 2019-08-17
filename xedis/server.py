@@ -21,6 +21,7 @@ class RequestHandler(asyncore.dispatcher_with_send):
         try:
             response = parse(cmd)
         except Exception as ex:
+            _LOG.exception('error parsing cmd:%s', cmd)
             self.send(serialize(ex))
         else:
             self.send(serialize(response))

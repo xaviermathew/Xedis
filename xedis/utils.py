@@ -4,6 +4,8 @@ import json
 import sys
 from types import ModuleType, FunctionType
 
+from xavium.commands import is_parallelizable
+
 
 # Custom objects know their class.
 # Function objects seem to know way too much, including modules.
@@ -36,9 +38,11 @@ def get_signature(cmd):
     sig = inspect.getargspec(fn)
     syntax = [cmd]
     if sig.args:
-        syntax.append(' '.join(sig.args))
+        syntax.extend(sig.args)
     if sig.varargs:
         syntax.append('*%s' % sig.varargs)
+    if is_parallelizable(fn) and syntax[-1] != cmd and not syntax[-1].startswith('*'):
+        syntax[-1] = '*%s' % syntax[-1]
     return ' '.join(syntax)
 
 

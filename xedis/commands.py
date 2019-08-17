@@ -1,17 +1,21 @@
+from xavium.commands import op
 from xedis.store import STORE
 from xedis.utils import get_size, get_signature
 
 
+@op
 def flush():
     STORE.clear()
 
 
+@op
 def info():
     num_items = len(STORE)
     mem_usage = get_size(STORE)
     return {'num_items': num_items, 'mem_usage': mem_usage}
 
 
+@op
 def help(cmd=None):
     from xedis.parser import COMMANDS
 
@@ -22,31 +26,38 @@ def help(cmd=None):
         return get_signature(cmd)
 
 
+@op
 def keys():
     return STORE.keys()
 
 
+@op
 def rem(name):
     del STORE[name]
 
 
+@op
 def screate(name):
     STORE[name] = set()
 
 
+@op
 def sget(name):
     return STORE[name]
 
 
-def sadd(name, *items):
-    STORE[name].update(items)
+@op(parallelizable=True)
+def sadd(name, item):
+    STORE[name].add(item)
 
 
+@op
 def srem(name, *items):
     for item in items:
         STORE[name].remove(item)
 
 
+@op
 def sinter(*names):
     result = STORE[names[0]]
     for name in names[1:]:
@@ -54,6 +65,7 @@ def sinter(*names):
     return result
 
 
+@op
 def sunion(*names):
     result = STORE[names[0]]
     for name in names[1:]:
@@ -61,48 +73,69 @@ def sunion(*names):
     return result
 
 
+@op
 def scount(name):
     return len(STORE[name])
 
 
+@op
 def lcreate(name):
     STORE[name] = []
 
 
+@op
 def lappend(name, *items):
     STORE[name].extend(items)
 
 
+@op
+def lget(name):
+    return STORE[name]
+
+
+@op
+def lrem(name, *items):
+    for item in items:
+        STORE[name].remove(item)
+
+
+@op
+def lcount(name):
+    return len(STORE[name])
+
+
+@op
 def hcreate(name):
     STORE[name] = {}
 
 
+@op
 def hset(name, *items):
     for item in items:
         k, v = item.split(':')
         STORE[name][k] = v
 
 
-def hpop(name, *items):
-    for item in items:
-        del STORE[name][item]
+@op(parallelizable=True)
+def hpop(name, item):
+    del STORE[name][item]
 
 
+@op
 def hkeys(name):
     return STORE[name].keys()
 
 
+@op
 def hvalues(name):
     return STORE[name].values()
 
 
-def hget(name, *items):
-    result = []
-    for item in items:
-        result.append(STORE[name][item])
-    return result
+@op(parallelizable=True)
+def hget(name, item):
+    return STORE[name][item]
 
 
-lget = sget
-lrem = srem
-hcount = lcount = scount
+@op
+def hcount(name):
+    return len(STORE[name])
